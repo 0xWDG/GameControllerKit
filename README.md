@@ -103,6 +103,9 @@ struct ContentView: View {
 }
 ```
 
+## Image of Usage Demo App
+![78BFDAE4-FCC5-4C88-A818-CA921E1A1A06](https://github.com/user-attachments/assets/ef05f613-6b8d-4058-ac6d-db098b3e97b2)
+
 ## Contact
 
 We can get in touch via [Mastodon](https://mastodon.social/@0xWDG), [Twitter/X](https://twitter.com/0xWDG), [Discord](https://discordapp.com/users/918438083861573692), [Email](mailto:email@wesleydegroot.nl), [Website](https://wesleydegroot.nl).
