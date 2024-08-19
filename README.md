@@ -39,9 +39,37 @@ import GameControllerKit
 
 
 struct ContentView: View {
-    @State var gameController = GameControllerKit()
+    @State
+    var gameController = GameControllerKit()
 
-    @State var log: [String] = []
+    @State
+    var log: [String] = [] // Bad practice, do not do this in production.
+
+    var body: some View {
+        VStack {
+            Button {
+                gameController.set(color: .GCKRandom)
+            } label: {
+                Text("Random Color")
+            }
+
+            Text("Controller: \(gameController.controller?.productCategory ?? "None"), \((gameController.controllerType ?? .generic).description)")
+            Text("Left: \(String(describing: gameController.leftThumbstick)).")
+            Text("Right: \(String(describing: gameController.rightThumbstick)).")
+            Text("Last action: \(String(describing: gameController.lastAction)).")
+
+            List {
+                ForEach(log.reversed(), id: \.self) { text in
+                    Text(text)
+                }
+            }
+        }
+        .padding()
+        .onAppear {
+            gameController.set(handler: handler)
+            UIApplication.shared.isIdleTimerDisabled = true
+        }
+    }
 
     func handler(action: GCKAction, pressed: Bool) {
         log.append(
@@ -72,32 +100,6 @@ struct ContentView: View {
                     )
                 )
             )
-        }
-    }
-
-    var body: some View {
-        VStack {
-            Button {
-                gameController.set(color: .GCKRandom)
-            } label: {
-                Text("Random Color")
-            }
-
-            Text("Controller: \(gameController.controller?.productCategory ?? "None"), \((gameController.controllerType ?? .generic).description)")
-            Text("Left: \(String(describing: gameController.leftThumbstick))")
-            Text("Right: \(String(describing: gameController.rightThumbstick)).")
-            Text("Last action: \(String(describing: gameController.lastAction)).")
-
-            List {
-                ForEach(log.reversed(), id: \.self) { text in
-                    Text(text)
-                }
-            }
-        }
-        .padding()
-        .onAppear {
-            gameController.set(handler: handler)
-            UIApplication.shared.isIdleTimerDisabled = true
         }
     }
 }
