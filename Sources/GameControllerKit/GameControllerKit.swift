@@ -20,9 +20,9 @@ import OSLog
 /// game controllers on iOS, macOS, and tvOS. It provides a simple API to
 /// connect to game controllers, read input from them, and control their
 /// lights and haptics.
-public class GameControllerKit {
+public class GameControllerKit: ObservableObject {
     /// Event Handler
-    public typealias GCKEventHandler = (_ action: GCKAction, _ pressed: Bool) -> Void
+    public typealias GCKEventHandler = (_ action: GCKAction, _ pressed: Bool, _ controller: GCKController) -> Void
 
     /// Indicates whether a game controller is currently connected.
     public var isConnected: Bool = false
@@ -32,10 +32,13 @@ public class GameControllerKit {
     @Published
     public var controllerType: GCKControllerType? = .none
 
-    /// The game controller that is currently connected, if any.
-    /// This property is nil if no controller is connected.
+    /// The game controller that is currently connected, if any. (this is always the first controller)
     @Published
-    public var controller: GCController?
+    public var controller: GCKController?
+
+    /// The game controllers that are currently connected, if any.
+    @Published
+    public var controllers: [GCKController] = []
 
     /// The current state of the left thumbstick.
     @Published
@@ -75,8 +78,11 @@ public class GameControllerKit {
             using: controllerDidDisconnect
         )
 
-        self.eventHandler = { [weak self] button, pressed in
-            self?.logger.info("Button \(String(describing: button)) is \(pressed ? "Pressed" : "Unpressed")")
+        self.eventHandler = { [weak self] button, pressed, controller in
+            let message = "Controller #\(String(describing: controller.playerIndex.rawValue)), " +
+            "Button \(String(describing: button)) is \(pressed ? "Pressed" : "Unpressed")"
+
+            self?.logger.info("\(String(describing: message))")
         }
     }
 
@@ -130,6 +136,7 @@ public class GameControllerKit {
     ///
     /// - Parameter action: ``GCKAction``
     /// - Returns: ``GCKMovePosition``
+    @available(*, deprecated, message: "Use .position on the action directly")
     public func translate(action: GCKAction) -> GCKMovePosition {
         // swiftlint:disable:previous cyclomatic_complexity
         var position: GCKMovePosition = .unknown
@@ -167,41 +174,61 @@ public class GameControllerKit {
 
     // MARK: - Connect/Disconnect functions
     @objc private func controllerDidConnect(_ notification: Notification) {
-        guard let firstController = GCController.controllers().first else {
+        controllers = GCController.controllers()
+
+        guard !controllers.isEmpty else {
             logger.fault("Failed to get the controller")
             return
         }
 
-        isConnected = true
-        controller = firstController
+        for (index, currentController) in controllers.enumerated() {
+            currentController.playerIndex = GCControllerPlayerIndex(rawValue: index) ?? .indexUnset
 
-        controllerType = switch firstController.physicalInputProfile {
-        case is GCDualSenseGamepad:
-                .dualSense
+            if !isConnected {
+                isConnected = true
+                controller = currentController
+            }
 
-        case is GCDualShockGamepad:
-                .dualShock
+            let currentControllerType: GCKControllerType = switch currentController.physicalInputProfile {
+            case is GCDualSenseGamepad:
+                    .dualSense
 
-        case is GCXboxGamepad:
-                .xbox
+            case is GCDualShockGamepad:
+                    .dualShock
 
-        case is GCMicroGamepad:
-                .siriRemote
-        default:
-                .generic
+            case is GCXboxGamepad:
+                    .xbox
+
+            case is GCMicroGamepad:
+                    .siriRemote
+            default:
+                    .generic
+            }
+
+            let contr = String(describing: currentControllerType)
+            logger.info("Did connect controller \(currentController.productCategory) recognized as \(contr).")
+
+            setupController(controller: currentController)
         }
-
-        let contr = String(describing: self.controllerType ?? .generic)
-        logger.info("Did connect controller \(firstController.productCategory) recognized as \(contr).")
-
-        setupController(controller: firstController)
     }
 
     @objc private func controllerDidDisconnect(_ notification: Notification) {
-        isConnected = false
-        self.controllerType = nil
+        controllers = GCController.controllers()
 
-        logger.info("Controller is disconnected")
+        if controller == notification.object as? GCController? {
+            logger.debug("The primary controller is disconnected")
+            isConnected = false
+            self.controllerType = nil
+
+            if !controllers.isEmpty {
+                logger.debug("Setup a new primary controller")
+                controllerDidConnect(notification)
+            }
+
+            return
+        }
+
+        logger.debug("A controller is disconnected")
     }
 
     // MARK: - Setup controller
@@ -281,22 +308,22 @@ public class GameControllerKit {
             for (button, name) in buttons {
                 button?.valueChangedHandler = { [weak self] (_, _, pressed) in
                     self?.lastAction = name
-                    self?.eventHandler?(name, pressed)
+                    self?.eventHandler?(name, pressed, controller)
                 }
             }
 
             gamepad.leftThumbstick.valueChangedHandler = { (_, xPos, yPos) in
                 let action: GCKAction = .leftThumbstick(x: xPos, y: yPos)
                 self.lastAction = action
-                self.leftThumbstick = self.translate(action: action)
-                self.eventHandler?(action, false)
+                self.leftThumbstick = action.position
+                self.eventHandler?(action, false, controller)
             }
 
             gamepad.rightThumbstick.valueChangedHandler = { (_, xPos, yPos) in
                 let action: GCKAction = .rightThumbstick(x: xPos, y: yPos)
                 self.lastAction = action
-                self.rightThumbstick = self.translate(action: action)
-                self.eventHandler?(action, false)
+                self.rightThumbstick = action.position
+                self.eventHandler?(action, false, controller)
             }
         }
     }

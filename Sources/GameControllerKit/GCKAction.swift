@@ -135,4 +135,87 @@ public enum GCKAction: Comparable {
 
     /// None: initial value
     case none
+
+    /// Get the position of the thumbstick.
+    public var position: GCKMovePosition {
+        var position: GCKMovePosition = .unknown
+
+        switch self {
+        case .leftThumbstick(let xPos, let yPos), .rightThumbstick(let xPos, let yPos):
+            if yPos == 1.0 {
+                position = .up
+            } else if xPos > 0 && xPos < 1 && yPos > 0 && yPos < 1 {
+                position = .upRight
+            } else if xPos == 1.0 {
+                position = .right
+            } else if xPos > 0 && xPos < 1 && yPos < 0 && yPos > -1 {
+                position = .downRight
+            } else if yPos == -1.0 {
+                position = .down
+            } else if xPos < 0 && xPos > -1 && yPos < 0 && yPos > -1 {
+                position = .downLeft
+            } else if xPos == -1.0 {
+                position = .left
+            } else if xPos < 0 && xPos > -1 && yPos > 0 && yPos < 1 {
+                position = .upLeft
+            } else if xPos == 0 && yPos == 0 {
+                position = .centered
+            } else {
+                position = .unknown
+            }
+
+        default:
+            position = GCKMovePosition.unknown
+        }
+
+        return position
+    }
+
+    /// Is the current action a thumbstick action
+    public var thumbStickAction: Bool {
+        return switch self {
+        case
+                .leftThumbstick,
+                .rightThumbstick:
+            true
+
+        default:
+            false
+        }
+    }
+
+    /// Is the current action a touchpad action (Playstation Only)
+    public var touchPadAction: Bool {
+        return switch self {
+        case
+                .touchpadButton,
+                .touchpadPrimaryUp,
+                .touchpadPrimaryRight,
+                .touchpadPrimaryDown,
+                .touchpadPrimaryLeft,
+                .touchpadSecondaryUp,
+                .touchpadSecondaryRight,
+                .touchpadSecondaryDown,
+                .touchpadSecondaryLeft:
+            true
+
+        default:
+            false
+        }
+    }
+
+    /// Is the current action a paddle action (Xbox Only)
+    public var paddleAction: Bool {
+        return switch self {
+        case
+                .paddleButton1,
+                .paddleButton2,
+                .paddleButton3,
+                .paddleButton4:
+            true
+
+        default:
+            false
+        }
+    }
 }

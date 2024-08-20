@@ -37,13 +37,14 @@ targets: [
 import SwiftUI
 import GameControllerKit
 
-
 struct ContentView: View {
+    /// The game controller kit
     @State
     var gameController = GameControllerKit()
 
+    /// Log
     @State
-    var log: [String] = [] // Bad practice, do not do this in production.
+    var log: [String] = []
 
     var body: some View {
         VStack {
@@ -53,10 +54,12 @@ struct ContentView: View {
                 Text("Random Color")
             }
 
-            Text("Controller: \(gameController.controller?.productCategory ?? "None"), \((gameController.controllerType ?? .generic).description)")
-            Text("Left: \(String(describing: gameController.leftThumbstick)).")
-            Text("Right: \(String(describing: gameController.rightThumbstick)).")
-            Text("Last action: \(String(describing: gameController.lastAction)).")
+            Text("Controller: \(gameController.controller?.productCategory ?? "None"), " +
+                 "\((gameController.controllerType ?? .generic).description)")
+            Text("Last action:\n\(String(describing: gameController.lastAction)).")
+
+            GCKControllerView()
+                .environmentObject(gameController)
 
             List {
                 ForEach(log.reversed(), id: \.self) { text in
@@ -71,42 +74,33 @@ struct ContentView: View {
         }
     }
 
-    func handler(action: GCKAction, pressed: Bool) {
+    /// Handler
+    ///
+    /// - Parameters:
+    ///   - action: action
+    ///   - pressed: is the button pressed?
+    ///   - controller: which controller?
+    public func handler(
+        action: GCKAction,
+        pressed: Bool,
+        controller: GCKController
+    ) {
         log.append(
-            "\(String(describing: action)), \(pressed ? "Pressed" : "Unpressed")"
+            "\(String(describing: action)), \(pressed ? "Pressed" : "Unpressed"), " +
+            "Controller #id \(String(describing: controller.playerIndex.rawValue))"
         )
 
         if action == .buttonA && pressed {
-            // When pressed on A or X (on PlayStation controllers), set the color to a random color.
-            // Colors are only supported on controllers that have a light, like DualShock and Dualsense controllers.
+            // set to a random color
             gameController.set(color: .GCKRandom)
-        }
-
-        if case .rightThumbstick = action {
-            log.append("Right thumbstick: " +
-                String(
-                    describing: gameController.translate(
-                        action: action
-                    )
-                )
-            )
-        }
-
-        if case .leftThumbstick = action {
-            log.append("Left thumbstick: " +
-                String(
-                    describing: gameController.translate(
-                        action: action
-                    )
-                )
-            )
         }
     }
 }
 ```
 
 ## Image of Usage Demo App
-![78BFDAE4-FCC5-4C88-A818-CA921E1A1A06](https://github.com/user-attachments/assets/ef05f613-6b8d-4058-ac6d-db098b3e97b2)
+
+![C65552DF-04CC-493E-AD73-C385A7CEC53C](https://github.com/user-attachments/assets/7bae192c-41ae-42d5-ad52-e204de73b3a0)
 
 ## Contact
 
