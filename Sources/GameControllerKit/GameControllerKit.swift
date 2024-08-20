@@ -136,7 +136,7 @@ public class GameControllerKit: ObservableObject {
     ///
     /// - Parameter action: ``GCKAction``
     /// - Returns: ``GCKMovePosition``
-    @available(*, deprecated, message: "Use .position on the action directly")
+    @available(*, deprecated, message: "Use ``GCKAction.position`` on the action directly")
     public func translate(action: GCKAction) -> GCKMovePosition {
         // swiftlint:disable:previous cyclomatic_complexity
         var position: GCKMovePosition = .unknown
