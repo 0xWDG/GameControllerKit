@@ -80,7 +80,8 @@ public class GameControllerKit: ObservableObject {
 
         self.eventHandler = { [weak self] button, pressed, controller in
             let message = "Controller #\(String(describing: controller.playerIndex.rawValue)), " +
-            "Button \(String(describing: button)) is \(pressed ? "Pressed" : "Unpressed")"
+            "Button \(String(describing: button)) \(button.position.arrowRepresentation) " +
+            "is \(pressed ? "Pressed" : "Unpressed")"
 
             self?.logger.info("\(String(describing: message))")
         }
@@ -201,18 +202,18 @@ public class GameControllerKit: ObservableObject {
             }
 
             let contr = String(describing: currentControllerType)
-            logger.info("Did connect controller \(currentController.productCategory) recognized as \(contr).")
+            logger.info(
+                "Did connect controller \(currentController.productCategory) recognized as \(contr)."
+            )
 
-            logger.info("CONNECTED: \(self.controllers.count)")
-
-            // Disfavor Siri Remote over a external controller.
-            if (currentControllerType == .siriRemote && controllers.count == 1) ||
-                currentControllerType != .siriRemote {
+            if !isConnected && currentControllerType != .siriRemote {
                 isConnected = true
                 controller = currentController
                 controllerType = currentControllerType
 
-                logger.info("Did set controller \(currentController.productCategory) as main (first) controller.")
+                logger.info(
+                    "Did set controller \(currentController.productCategory) as main (first) controller."
+                )
             }
 
             setupController(controller: currentController)

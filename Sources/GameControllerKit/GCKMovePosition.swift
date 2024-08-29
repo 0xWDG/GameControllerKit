@@ -44,4 +44,29 @@ public enum GCKMovePosition: Comparable {
     /// The thumbstick position is unknown (usually a phase in between a position and center)
     /// if it keeps being unknown, check if the event you are sending is correct.
     case unknown
+
+    public var arrowRepresentation: String {
+        switch self {
+        case .up:
+            "↑"
+        case .upRight:
+            "↗"
+        case .right:
+            "→"
+        case .downRight:
+            "↘"
+        case .down:
+            "↓"
+        case .downLeft:
+            "↙"
+        case .left:
+            "←"
+        case .upLeft:
+            "↖"
+        case .centered:
+            "•"
+        case .unknown:
+            ""
+        }
+    }
 }
