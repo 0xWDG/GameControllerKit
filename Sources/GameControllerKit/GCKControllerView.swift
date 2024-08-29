@@ -15,10 +15,6 @@ public struct GCKControllerView: View {
     @EnvironmentObject
     var GCKit: GameControllerKit
 
-    var controller: GCKController {
-        GCKit.controller ?? .withExtendedGamepad()
-    }
-
     var action: GCKAction {
         GCKit.lastAction
     }
@@ -36,7 +32,8 @@ public struct GCKControllerView: View {
 
             HStack {
                 dPad
-                if controller.hasTouchPad {
+                if let controller = GCKit.controller,
+                   controller.hasTouchPad {
                     touchPad
                 }
                 buttons
@@ -210,9 +207,9 @@ public struct GCKControllerView: View {
                     .stroke()
                     .foregroundStyle(
                         Color(cgColor: .init(
-                            red: CGFloat(controller.light?.color.red ?? 0),
-                            green: CGFloat(controller.light?.color.green ?? 0),
-                            blue: CGFloat(controller.light?.color.blue ?? 0),
+                            red: CGFloat(GCKit.controller?.light?.color.red ?? 0),
+                            green: CGFloat(GCKit.controller?.light?.color.green ?? 0),
+                            blue: CGFloat(GCKit.controller?.light?.color.blue ?? 0),
                             alpha: 1
                         ))
                     )

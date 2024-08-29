@@ -15,8 +15,8 @@ import CoreHaptics
 import OSLog
 
 /// Game Controller Kit
-/// 
-/// GameControllerKit is a Swift package that makes it easy to work with 
+///
+/// GameControllerKit is a Swift package that makes it easy to work with
 /// game controllers on iOS, macOS, and tvOS. It provides a simple API to
 /// connect to game controllers, read input from them, and control their
 /// lights and haptics.
@@ -184,11 +184,6 @@ public class GameControllerKit: ObservableObject {
         for (index, currentController) in controllers.enumerated() {
             currentController.playerIndex = GCControllerPlayerIndex(rawValue: index) ?? .indexUnset
 
-            if !isConnected {
-                isConnected = true
-                controller = currentController
-            }
-
             let currentControllerType: GCKControllerType = switch currentController.physicalInputProfile {
             case is GCDualSenseGamepad:
                     .dualSense
@@ -207,6 +202,18 @@ public class GameControllerKit: ObservableObject {
 
             let contr = String(describing: currentControllerType)
             logger.info("Did connect controller \(currentController.productCategory) recognized as \(contr).")
+
+            logger.info("CONNECTED: \(self.controllers.count)")
+
+            // Disfavor Siri Remote over a external controller.
+            if (currentControllerType == .siriRemote && controllers.count == 1) ||
+                currentControllerType != .siriRemote {
+                isConnected = true
+                controller = currentController
+                controllerType = currentControllerType
+
+                logger.info("Did set controller \(currentController.productCategory) as main (first) controller.")
+            }
 
             setupController(controller: currentController)
         }
