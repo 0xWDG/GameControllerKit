@@ -106,6 +106,9 @@ struct ContentView: View {
 ### MacOS
 <img width="1012" alt="AA801C52-88A1-4326-A5DC-3A04DF491077" src="https://github.com/user-attachments/assets/f6eaa752-fdda-4ddd-8eeb-acbc9797dc94">
 
+### tvOS
+![Screenshot 2024-08-29 at 14 43 51](https://github.com/user-attachments/assets/77def389-784e-44b5-9df8-80b675fdb8bf)
+
 ## Contact
 
 We can get in touch via [Mastodon](https://mastodon.social/@0xWDG), [Twitter/X](https://twitter.com/0xWDG), [Discord](https://discordapp.com/users/918438083861573692), [Email](mailto:email@wesleydegroot.nl), [Website](https://wesleydegroot.nl).
