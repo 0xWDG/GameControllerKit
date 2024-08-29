@@ -100,7 +100,11 @@ struct ContentView: View {
 
 ## Image of Usage Demo App
 
+### iOS
 ![C65552DF-04CC-493E-AD73-C385A7CEC53C](https://github.com/user-attachments/assets/7bae192c-41ae-42d5-ad52-e204de73b3a0)
+
+### MacOS
+<img width="1012" alt="AA801C52-88A1-4326-A5DC-3A04DF491077" src="https://github.com/user-attachments/assets/f6eaa752-fdda-4ddd-8eeb-acbc9797dc94">
 
 ## Contact
 
