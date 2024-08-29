@@ -86,7 +86,7 @@ struct ContentView: View {
         controller: GCKController
     ) {
         log.append(
-            "\(String(describing: action)), \(pressed ? "Pressed" : "Unpressed"), " +
+            "\(String(describing: action))(\(action.position.arrowRepresentation)) \(pressed ? "Pressed" : "Unpressed"), " +
             "Controller #id \(String(describing: controller.playerIndex.rawValue))"
         )
 
