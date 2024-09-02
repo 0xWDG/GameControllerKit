@@ -24,9 +24,6 @@ public class GameControllerKit: ObservableObject {
     /// Event Handler
     public typealias GCKEventHandler = (_ action: GCKAction, _ pressed: Bool, _ controller: GCKController) -> Void
 
-    /// Indicates whether a game controller is currently connected.
-    public var isConnected: Bool = false
-
     /// The type of game controller that is currently connected, if any.
     /// This property is nil if no controller is connected.
     @Published
@@ -61,11 +58,14 @@ public class GameControllerKit: ObservableObject {
         category: "GameControllerKit"
     )
 
+    /// Indicates whether a game controller is currently connected.
+    public var isConnected: Bool = false
+
     /// Initializes a new GameControllerKit instance.
     /// It sets up notification observers for when game controllers connect or disconnect.
     ///
-    /// - Parameter logger: Custom ``Logger`` instance.
-    public init(_ logger: Logger? = nil) {
+    /// - Parameter logger: Custom ``Logger`` instance. (optional)
+    public init(logger: Logger? = nil) {
         NotificationCenter.default.addObserver(
             forName: .GCControllerDidConnect,
             object: nil,
@@ -93,15 +93,6 @@ public class GameControllerKit: ObservableObject {
         }
     }
 
-    /// Set the logger
-    ///
-    /// Use a custom ``Logger`` instance if you want to have custom logging.
-    ///
-    /// - Parameter color: Color
-    public func set(logger: Logger) {
-        self.logger = logger
-    }
-
     /// Set color of the controllers light
     ///
     /// Use the light settings to signal the user or to create a more immersive experience.
@@ -124,7 +115,7 @@ public class GameControllerKit: ObservableObject {
 
     /// Plays random colors on your controller (if supported)
     /// This is currently only supported on a DualSense and DualShock controller (Playstation)
-    public func rainbow() {
+    public func randomColors() {
         for counter in 0...10 {
             DispatchQueue.main.asyncAfter(deadline: .now() + (Double(counter)/0.99)) {
                 self.set(color: .GCKRandom)
