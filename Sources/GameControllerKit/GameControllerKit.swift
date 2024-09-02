@@ -57,7 +57,7 @@ public class GameControllerKit: ObservableObject {
 
     /// Game Controller Kit logger.
     private let logger = Logger(
-        subsystem: "nl.wesleydegoot.GameControllerKit",
+        subsystem: "nl.wesleydegroot.GameControllerKit",
         category: "GameControllerKit"
     )
 
