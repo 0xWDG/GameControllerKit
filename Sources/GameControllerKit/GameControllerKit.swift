@@ -56,14 +56,16 @@ public class GameControllerKit: ObservableObject {
     private var eventHandler: GCKEventHandler?
 
     /// Game Controller Kit logger.
-    private let logger = Logger(
+    private var logger = Logger(
         subsystem: "nl.wesleydegroot.GameControllerKit",
         category: "GameControllerKit"
     )
 
     /// Initializes a new GameControllerKit instance.
     /// It sets up notification observers for when game controllers connect or disconnect.
-    public init() {
+    ///
+    /// - Parameter logger: Custom ``Logger`` instance.
+    public init(_ logger: Logger? = nil) {
         NotificationCenter.default.addObserver(
             forName: .GCControllerDidConnect,
             object: nil,
@@ -85,8 +87,21 @@ public class GameControllerKit: ObservableObject {
 
             self?.logger.info("\(String(describing: message))")
         }
+
+        if let logger = logger {
+            self.logger = logger
+        }
     }
 
+    /// Set the logger
+    ///
+    /// Use a custom ``Logger`` instance if you want to have custom logging.
+    ///
+    /// - Parameter color: Color
+    public func set(logger: Logger) {
+        self.logger = logger
+    }
+    
     /// Set color of the controllers light
     ///
     /// Use the light settings to signal the user or to create a more immersive experience.
@@ -98,12 +113,16 @@ public class GameControllerKit: ObservableObject {
     }
 
     /// Set the event handler
+    ///
+    /// This function allows you to setup a custom event handler, which you need to receive inputs from the controller.
+    ///
     /// - Parameter handler: event handler
     public func set(handler: @escaping GCKEventHandler) {
         self.eventHandler = handler
     }
 
-    /// Plays random colors on your controller, if supported
+    /// Plays random colors on your controller (if supported)
+    /// This is currently only supported on a DualSense and DualShock controller (Playstation)
     public func rainbow() {
         for counter in 0...10 {
             DispatchQueue.main.asyncAfter(deadline: .now() + (Double(counter)/0.99)) {
@@ -113,6 +132,8 @@ public class GameControllerKit: ObservableObject {
     }
 
     /// Play haptics
+    ///
+    /// This plays haptics (vibrations) on the gamecontroller.
     ///
     /// - Parameter url: Haptics file
     public func playHaptics(url: URL) {
@@ -133,47 +154,11 @@ public class GameControllerKit: ObservableObject {
         }
     }
 
-    /// Translate ``GCKAction`` to ``GCKMovePosition``
-    ///
-    /// - Parameter action: ``GCKAction``
-    /// - Returns: ``GCKMovePosition``
-    @available(*, deprecated, message: "Use .position on the action directly")
-    public func translate(action: GCKAction) -> GCKMovePosition {
-        // swiftlint:disable:previous cyclomatic_complexity
-        var position: GCKMovePosition = .unknown
-
-        switch action {
-        case .leftThumbstick(let xPos, let yPos), .rightThumbstick(let xPos, let yPos):
-            if yPos == 1.0 {
-                position = .up
-            } else if xPos > 0 && xPos < 1 && yPos > 0 && yPos < 1 {
-                position = .upRight
-            } else if xPos == 1.0 {
-                position = .right
-            } else if xPos > 0 && xPos < 1 && yPos < 0 && yPos > -1 {
-                position = .downRight
-            } else if yPos == -1.0 {
-                position = .down
-            } else if xPos < 0 && xPos > -1 && yPos < 0 && yPos > -1 {
-                position = .downLeft
-            } else if xPos == -1.0 {
-                position = .left
-            } else if xPos < 0 && xPos > -1 && yPos > 0 && yPos < 1 {
-                position = .upLeft
-            } else if xPos == 0 && yPos == 0 {
-                position = .centered
-            } else {
-                position = .unknown
-            }
-
-        default:
-            position = GCKMovePosition.unknown
-        }
-
-        return position
-    }
-
     // MARK: - Connect/Disconnect functions
+    /// Controller did connect
+    ///
+    /// This function handles the connection of a controller.
+    /// If it is the first controller it will set to the primary controller
     @objc private func controllerDidConnect(_ notification: Notification) {
         controllers = GCController.controllers()
 
@@ -220,6 +205,9 @@ public class GameControllerKit: ObservableObject {
         }
     }
 
+    /// Controller did disconnect
+    ///
+    /// This function handles the disconnection of a controller.
     @objc private func controllerDidDisconnect(_ notification: Notification) {
         controllers = GCController.controllers()
 
@@ -242,6 +230,8 @@ public class GameControllerKit: ObservableObject {
     // MARK: - Setup controller
 
     /// Set up controller
+    ///
+    /// This function sets up the controller, it looks which type it is and then map the elements to the corresponding responders.
     ///
     /// - Parameter controller: Controller
     func setupController(controller: GCController) {
@@ -339,6 +329,8 @@ public class GameControllerKit: ObservableObject {
 
 extension GCColor {
     /// Random color
+    ///
+    /// - Returns: A random color.
     public static var GCKRandom: GCColor {
         return GCColor(
             red: .random(in: 0...1),
