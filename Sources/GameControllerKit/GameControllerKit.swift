@@ -101,7 +101,7 @@ public class GameControllerKit: ObservableObject {
     public func set(logger: Logger) {
         self.logger = logger
     }
-    
+
     /// Set color of the controllers light
     ///
     /// Use the light settings to signal the user or to create a more immersive experience.
@@ -114,7 +114,8 @@ public class GameControllerKit: ObservableObject {
 
     /// Set the event handler
     ///
-    /// This function allows you to setup a custom event handler, which you need to receive inputs from the controller.
+    /// This function allows you to setup a custom event handler, 
+    /// which you need to receive inputs from the controller.
     ///
     /// - Parameter handler: event handler
     public func set(handler: @escaping GCKEventHandler) {
