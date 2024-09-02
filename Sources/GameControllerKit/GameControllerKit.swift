@@ -232,7 +232,8 @@ public class GameControllerKit: ObservableObject {
 
     /// Set up controller
     ///
-    /// This function sets up the controller, it looks which type it is and then map the elements to the corresponding responders.
+    /// This function sets up the controller, 
+    /// it looks which type it is and then map the elements to the corresponding responders.
     ///
     /// - Parameter controller: Controller
     func setupController(controller: GCController) {
