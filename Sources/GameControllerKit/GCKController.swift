@@ -20,11 +20,11 @@ public typealias GCKController = GCController
 extension GCKController {
     /// Does the current controller has a touchpad?
     public var hasTouchPad: Bool {
-        if self.physicalInputProfile as? GCDualSenseGamepad != nil {
+        if self.physicalInputProfile is GCDualSenseGamepad {
             return true
         }
 
-        if self.physicalInputProfile as? GCDualShockGamepad != nil {
+        if self.physicalInputProfile is GCDualShockGamepad {
             return true
         }
 
@@ -33,6 +33,6 @@ extension GCKController {
 
     /// Does the current controller have paddle buttons?
     public var hasPaddleButtons: Bool {
-        return self.physicalInputProfile as? GCXboxGamepad != nil
+        return self.physicalInputProfile is GCXboxGamepad
     }
 }
