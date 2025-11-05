@@ -109,6 +109,12 @@ struct ContentView: View {
 ### tvOS
 ![Screenshot 2024-08-29 at 14 43 51](https://github.com/user-attachments/assets/77def389-784e-44b5-9df8-80b675fdb8bf)
 
+## Mentions
+
+- Touch-free Touch Screens by Rob Whitaker  
+  https://appdevcon.nl/session/touch-free-touch-screens/ @ AppDevCon 2025  
+  https://www.youtube.com/watch?v=bHPMuVyjBYw @ iOSKonf25 
+
 ## Contact
 
 🦋 [@0xWDG](https://bsky.app/profile/0xWDG.bsky.social)
