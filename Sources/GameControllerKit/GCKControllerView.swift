@@ -29,6 +29,9 @@ public struct GCKControllerView: View {
             } else {
                 controllerTypeLabel
 
+                GCKControllerShapeView(controllerType: GCKit.controllerType)
+                    .padding(.bottom, 8)
+
                 // L2, R2
                 shoulder2
                 shoulder1
