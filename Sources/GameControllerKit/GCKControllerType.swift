@@ -40,7 +40,7 @@ public enum GCKControllerType {
         case .siriRemote:
             "Siri Remote"
         case .generic:
-            "Genric"
+            "Generic"
         }
     }
 }

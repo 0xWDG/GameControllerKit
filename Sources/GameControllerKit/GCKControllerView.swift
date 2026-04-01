@@ -24,24 +24,78 @@ public struct GCKControllerView: View {
 
     public var body: some View {
         VStack {
-            // L2, R2
-            shoulder2
-            shoulder1
+            if GCKit.controller == nil {
+                noControllerView
+            } else {
+                controllerTypeLabel
 
-            selectMenu
+                // L2, R2
+                shoulder2
+                shoulder1
 
-            HStack {
-                dPad
-                if let controller = GCKit.controller,
-                   controller.hasTouchPad {
-                    touchPad
+                selectMenu
+
+                HStack {
+                    dPad
+                    if let controller = GCKit.controller,
+                       controller.hasTouchPad {
+                        touchPad
+                    }
+                    controllerButtons
                 }
-                buttons
-            }
 
-            thumbSticks
+                thumbSticks
+
+                if let controller = GCKit.controller,
+                   controller.hasPaddleButtons {
+                    paddleButtons
+                }
+            }
         }
         .padding(50)
+    }
+
+    var noControllerView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "gamecontroller")
+                .font(.system(size: 60))
+                .foregroundStyle(.secondary)
+            Text("No Controller Connected")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            Text("Connect a game controller to see its layout.")
+                .font(.subheadline)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    var controllerTypeLabel: some View {
+        HStack {
+            Spacer()
+            Text(GCKit.controllerType?.description ?? "Unknown Controller")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+    }
+
+    /// Returns the appropriate button layout for the connected controller type.
+    @ViewBuilder
+    var controllerButtons: some View {
+        if let controllerType = GCKit.controllerType {
+            switch controllerType {
+            case .dualSense, .dualShock:
+                playstationButtons
+            case .xbox:
+                xboxButtons
+            default:
+                genericButtons
+            }
+        } else {
+            genericButtons
+        }
     }
 
     var shoulder2: some View {
@@ -225,70 +279,78 @@ public struct GCKControllerView: View {
         }
     }
 
-    var buttons: some View {
+    private func controllerButton(
+        label: String,
+        strokeColor: Color = .primary,
+        activeColor: Color = .yellow,
+        targetAction: GCKAction
+    ) -> some View {
+        Text(label)
+            .padding(3)
+            .frame(width: 25, height: 25)
+            .background(
+                RoundedRectangle(cornerRadius: 25)
+                    .stroke(strokeColor)
+            )
+            .background(
+                RoundedRectangle(cornerRadius: 25)
+                    .fill()
+                    .foregroundStyle(
+                        action == targetAction ? activeColor : .clear
+                    )
+            )
+    }
+
+    var playstationButtons: some View {
         VStack {
-            Text("Y")
-                .padding(3)
-                .frame(width: 25, height: 25)
-                .background(
-                    RoundedRectangle(cornerRadius: 25)
-                        .stroke()
-                )
-                .background(
-                    RoundedRectangle(cornerRadius: 25)
-                        .fill()
-                        .foregroundStyle(
-                            action == .buttonY ? .yellow : .clear
-                        )
-                )
+            // Triangle (top) - green
+            controllerButton(label: "△", strokeColor: .green, activeColor: .green, targetAction: .buttonY)
 
             HStack {
-                Text("X")
-                    .padding(3)
-                    .frame(width: 25, height: 25)
-                    .background(
-                        RoundedRectangle(cornerRadius: 25)
-                            .stroke()
-                    )
-                    .background(
-                        RoundedRectangle(cornerRadius: 25)
-                            .fill()
-                            .foregroundStyle(
-                                action == .buttonX ? .yellow : .clear
-                            )
-                    )
+                // Square (left) - pink
+                controllerButton(label: "□", strokeColor: .pink, activeColor: .pink, targetAction: .buttonX)
                     .padding(.trailing, 25)
 
-                Text("B")
-                    .padding(3)
-                    .frame(width: 25, height: 25)
-                    .background(
-                        RoundedRectangle(cornerRadius: 25)
-                            .stroke()
-                    )
-                    .background(
-                        RoundedRectangle(cornerRadius: 25)
-                            .fill()
-                            .foregroundStyle(
-                                action == .buttonB ? .yellow : .clear
-                            )
-                    )
+                // Circle (right) - red
+                controllerButton(label: "○", strokeColor: .red, activeColor: .red, targetAction: .buttonB)
             }
 
-            Text("A")
-                .padding(3)
-                .frame(width: 25, height: 25)
-                .background(
-                    RoundedRectangle(cornerRadius: 25)
-                        .stroke()
-                )
-                .background(
-                    RoundedRectangle(cornerRadius: 25)
-                        .fill()
-                        .foregroundStyle(
-                            action == .buttonA ? .yellow : .clear
-                        )
-                )
+            // Cross (bottom) - blue
+            controllerButton(label: "✕", strokeColor: .blue, activeColor: .blue, targetAction: .buttonA)
+        }
+    }
+
+    var xboxButtons: some View {
+        VStack {
+            // Y (top) - yellow
+            controllerButton(label: "Y", strokeColor: .yellow, activeColor: .yellow, targetAction: .buttonY)
+
+            HStack {
+                // X (left) - blue
+                controllerButton(label: "X", strokeColor: .blue, activeColor: .blue, targetAction: .buttonX)
+                    .padding(.trailing, 25)
+
+                // B (right) - red
+                controllerButton(label: "B", strokeColor: .red, activeColor: .red, targetAction: .buttonB)
+            }
+
+            // A (bottom) - green
+            controllerButton(label: "A", strokeColor: .green, activeColor: .green, targetAction: .buttonA)
+        }
+    }
+
+    var genericButtons: some View {
+        VStack {
+            controllerButton(label: "Y", targetAction: .buttonY)
+
+            HStack {
+                controllerButton(label: "X", targetAction: .buttonX)
+                    .padding(.trailing, 25)
+
+                controllerButton(label: "B", targetAction: .buttonB)
+            }
+
+            controllerButton(label: "A", targetAction: .buttonA)
         }
     }
 
