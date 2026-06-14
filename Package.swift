@@ -11,18 +11,26 @@ let package = Package(
         .tvOS(.v16)
     ],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "GameControllerKit",
-            targets: ["GameControllerKit"])
+            targets: ["GameControllerKit"]
+        ),
+        .executable(
+            name: "GameControllerKitDemo",
+            targets: ["GameControllerKitDemo"]
+        )
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "GameControllerKit"),
+            name: "GameControllerKit"
+        ),
+        .executableTarget(
+            name: "GameControllerKitDemo",
+            dependencies: ["GameControllerKit"]
+        ),
         .testTarget(
             name: "GameControllerKitTests",
-            dependencies: ["GameControllerKit"])
+            dependencies: ["GameControllerKit"]
+        )
     ]
 )

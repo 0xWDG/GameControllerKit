@@ -12,7 +12,7 @@
 import Foundation
 
 /// Represents the type of game controller connected.
-public enum GCKControllerType {
+public enum GCKControllerType: CaseIterable, Identifiable {
     /// A DualSense controller (PlayStation 5).
     case dualSense
 
@@ -28,6 +28,11 @@ public enum GCKControllerType {
     /// A generic controller type, for other controllers.
     case generic
 
+    /// Stable identity for collection and picker usage.
+    public var id: Self {
+        self
+    }
+
     /// Description of the game controller
     public var description: String {
         switch self {
@@ -40,7 +45,7 @@ public enum GCKControllerType {
         case .siriRemote:
             "Siri Remote"
         case .generic:
-            "Genric"
+            "Generic"
         }
     }
 }

@@ -18,21 +18,35 @@ import GameController
 public typealias GCKController = GCController
 
 extension GCKController {
+    /// Controller type inferred from the physical input profile.
+    public var gckControllerType: GCKControllerType {
+        switch physicalInputProfile {
+        case is GCDualSenseGamepad:
+            .dualSense
+        case is GCDualShockGamepad:
+            .dualShock
+        case is GCXboxGamepad:
+            .xbox
+        case is GCMicroGamepad:
+            .siriRemote
+        default:
+            .generic
+        }
+    }
+
     /// Does the current controller has a touchpad?
+    public var hasTouchpad: Bool {
+        gckControllerType == .dualSense || gckControllerType == .dualShock
+    }
+
+    /// Does the current controller have a touchpad?
+    @available(*, deprecated, renamed: "hasTouchpad")
     public var hasTouchPad: Bool {
-        if self.physicalInputProfile is GCDualSenseGamepad {
-            return true
-        }
-
-        if self.physicalInputProfile is GCDualShockGamepad {
-            return true
-        }
-
-        return false
+        hasTouchpad
     }
 
     /// Does the current controller have paddle buttons?
     public var hasPaddleButtons: Bool {
-        return self.physicalInputProfile is GCXboxGamepad
+        physicalInputProfile is GCXboxGamepad
     }
 }

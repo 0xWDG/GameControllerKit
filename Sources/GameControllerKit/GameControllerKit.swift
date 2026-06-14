@@ -9,9 +9,9 @@
 //  MIT License
 //
 
+import CoreHaptics
 import Foundation
 import GameController
-import CoreHaptics
 import OSLog
 
 /// Game Controller Kit
@@ -20,76 +20,99 @@ import OSLog
 /// game controllers on iOS, macOS, and tvOS. It provides a simple API to
 /// connect to game controllers, read input from them, and control their
 /// lights and haptics.
-public class GameControllerKit: ObservableObject {
+@MainActor
+public final class GameControllerKit: ObservableObject {
     /// Event Handler
     public typealias GCKEventHandler = (_ action: GCKAction, _ pressed: Bool, _ controller: GCKController) -> Void
 
     /// The type of game controller that is currently connected, if any.
     /// This property is nil if no controller is connected.
     @Published
-    public var controllerType: GCKControllerType? = .none
+    public private(set) var controllerType: GCKControllerType?
 
     /// The game controller that is currently connected, if any. (this is always the first controller)
     @Published
-    public var controller: GCKController?
+    public private(set) var controller: GCKController?
 
     /// The game controllers that are currently connected, if any.
     @Published
-    public var controllers: [GCKController] = []
+    public private(set) var controllers: [GCKController] = []
 
     /// The current state of the left thumbstick.
     @Published
-    public var leftThumbstick: GCKMovePosition = .centered
+    public private(set) var leftThumbstick: GCKMovePosition = .centered
 
     /// The current state of the right thumbstick.
     @Published
-    public var rightThumbstick: GCKMovePosition = .centered
+    public private(set) var rightThumbstick: GCKMovePosition = .centered
 
     /// The last action done by the controller
     @Published
-    public var lastAction: GCKAction = .none
+    public private(set) var lastAction: GCKAction = .none
 
     /// Action handler for the actions performed by the user on the controller
     private var eventHandler: GCKEventHandler?
 
     /// Game Controller Kit logger.
-    private var logger = Logger(
+    private let logger: Logger
+
+    /// Notification observer tokens owned by this instance.
+    private var notificationTokens: [NSObjectProtocol] = []
+
+    /// Whether the current published connection is supplied by mock state.
+    private var isUsingMockController = false
+
+    private static let defaultLogger = Logger(
         subsystem: "nl.wesleydegroot.GameControllerKit",
         category: "GameControllerKit"
     )
 
     /// Indicates whether a game controller is currently connected.
-    public var isConnected: Bool = false
+    public var isConnected: Bool {
+        controllerType != nil
+    }
 
     /// Initializes a new GameControllerKit instance.
     /// It sets up notification observers for when game controllers connect or disconnect.
     ///
-    /// - Parameter logger: Custom ``Logger`` instance. (optional)
-    public init(logger: Logger? = nil) {
-        NotificationCenter.default.addObserver(
+    /// - Parameters:
+    ///   - logger: Custom ``Logger`` instance.
+    ///   - observesControllers: Whether to observe physical controller connections.
+    public init(logger: Logger? = nil, observesControllers: Bool = true) {
+        self.logger = logger ?? Self.defaultLogger
+
+        guard observesControllers else {
+            return
+        }
+
+        notificationTokens.append(NotificationCenter.default.addObserver(
             forName: .GCControllerDidConnect,
             object: nil,
             queue: .main,
-            using: controllerDidConnect
-        )
+            using: { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.synchronizeControllers()
+                }
+            }
+        ))
 
-        NotificationCenter.default.addObserver(
+        notificationTokens.append(NotificationCenter.default.addObserver(
             forName: .GCControllerDidDisconnect,
             object: nil,
             queue: .main,
-            using: controllerDidDisconnect
-        )
+            using: { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.synchronizeControllers()
+                }
+            }
+        ))
 
-        self.eventHandler = { [weak self] button, pressed, controller in
-            let message = "Controller #\(String(describing: controller.playerIndex.rawValue)), " +
-            "Button \(String(describing: button)) \(button.position.arrowRepresentation) " +
-            "is \(pressed ? "Pressed" : "Unpressed")"
+        synchronizeControllers()
+    }
 
-            self?.logger.info("\(String(describing: message))")
-        }
-
-        if let logger = logger {
-            self.logger = logger
+    deinit {
+        for token in notificationTokens {
+            NotificationCenter.default.removeObserver(token)
         }
     }
 
@@ -113,12 +136,49 @@ public class GameControllerKit: ObservableObject {
         self.eventHandler = handler
     }
 
+    /// Removes the custom event handler and restores default event logging.
+    public func resetHandler() {
+        eventHandler = nil
+    }
+
+    /// Presents a mock controller through the same published state used by the controller view.
+    ///
+    /// Physical controller notifications are ignored until ``stopMockingController()`` is called.
+    ///
+    /// - Parameter type: Controller type to present.
+    public func mockController(type: GCKControllerType = .generic) {
+        isUsingMockController = true
+        controller = nil
+        controllers = []
+        controllerType = type
+        resetInputState()
+    }
+
+    /// Publishes an input action for the currently mocked controller.
+    ///
+    /// - Parameters:
+    ///   - action: Action to publish.
+    ///   - pressed: Whether a button action is pressed.
+    public func sendMockAction(_ action: GCKAction, pressed: Bool = true) {
+        guard isUsingMockController else {
+            return
+        }
+
+        updatePublishedInput(action: action, pressed: pressed)
+    }
+
+    /// Stops presenting mock state and returns to connected physical controllers.
+    public func stopMockingController() {
+        isUsingMockController = false
+        synchronizeControllers()
+    }
+
     /// Plays random colors on your controller (if supported)
     /// This is currently only supported on a DualSense and DualShock controller (Playstation)
     public func randomColors() {
         for counter in 0...10 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + (Double(counter)/0.99)) {
-                self.set(color: .GCKRandom)
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(counter)) { [weak self] in
+                self?.set(color: .gckRandom)
             }
         }
     }
@@ -146,81 +206,39 @@ public class GameControllerKit: ObservableObject {
         }
     }
 
-    // MARK: - Connect/Disconnect functions
-    /// Controller did connect
-    ///
-    /// This function handles the connection of a controller.
-    /// If it is the first controller it will set to the primary controller
-    @objc private func controllerDidConnect(_ notification: Notification) {
-        controllers = GCController.controllers()
+    // MARK: - Controller synchronization
 
-        guard !controllers.isEmpty else {
-            logger.fault("Failed to get the controller")
+    private func synchronizeControllers() {
+        guard !isUsingMockController else {
             return
         }
 
-        for (index, currentController) in controllers.enumerated() {
+        let connectedControllers = GCController.controllers()
+        controllers = connectedControllers
+
+        for (index, currentController) in connectedControllers.enumerated() {
             currentController.playerIndex = GCControllerPlayerIndex(rawValue: index) ?? .indexUnset
-
-            let currentControllerType: GCKControllerType = switch currentController.physicalInputProfile {
-            case is GCDualSenseGamepad:
-                    .dualSense
-
-            case is GCDualShockGamepad:
-                    .dualShock
-
-            case is GCXboxGamepad:
-                    .xbox
-
-            case is GCMicroGamepad:
-                    .siriRemote
-            default:
-                    .generic
-            }
-
-            let contr = String(describing: currentControllerType)
-            logger.info(
-                "Did connect controller \(currentController.productCategory) recognized as \(contr)."
-            )
-
-            if !isConnected && currentControllerType != .siriRemote {
-                isConnected = true
-                controller = currentController
-                controllerType = currentControllerType
-
-                logger.info(
-                    "Did set controller \(currentController.productCategory) as main (first) controller."
-                )
-            }
-
             setupController(controller: currentController)
         }
-    }
 
-    /// Controller did disconnect
-    ///
-    /// This function handles the disconnection of a controller.
-    @objc private func controllerDidDisconnect(_ notification: Notification) {
-        controllers = GCController.controllers()
-
-        if controller == notification.object as? GCController? {
-            logger.debug("The primary controller is disconnected")
-            isConnected = false
-            self.controllerType = nil
-
-            if !controllers.isEmpty {
-                logger.debug("Setup a new primary controller")
-                controllerDidConnect(notification)
-            }
-
+        guard let primaryController = connectedControllers.first else {
+            controller = nil
+            controllerType = nil
+            resetInputState()
             return
         }
 
-        logger.debug("A controller is disconnected")
+        controller = primaryController
+        controllerType = primaryController.gckControllerType
+        logger.info(
+            "Using controller \(primaryController.productCategory) as the primary controller."
+        )
     }
+}
 
-    // MARK: - Setup controller
+// MARK: - Controller input mapping
 
+private extension GameControllerKit {
     /// Set up controller
     ///
     /// This function sets up the controller, 
@@ -228,95 +246,167 @@ public class GameControllerKit: ObservableObject {
     ///
     /// - Parameter controller: Controller
     func setupController(controller: GCController) {
-        // swiftlint:disable:previous function_body_length
         var buttons: [(GCControllerButtonInput?, GCKAction)] = []
 
-        if let gamepad = controller.extendedGamepad {
-            buttons.append(contentsOf: [
-                (gamepad.buttonA, .buttonA),
-                (gamepad.buttonB, .buttonB),
-                (gamepad.buttonX, .buttonX),
-                (gamepad.buttonY, .buttonY),
-                (gamepad.leftShoulder, .leftShoulder),
-                (gamepad.rightShoulder, .rightShoulder),
-                (gamepad.leftTrigger, .leftTrigger),
-                (gamepad.rightTrigger, .rightTrigger),
-                (gamepad.buttonMenu, .buttonMenu),
-                (gamepad.buttonOptions, .buttonOptions),
-                (gamepad.buttonHome, .buttonHome),
-                (gamepad.leftThumbstickButton, .leftThumbstickButton),
-                (gamepad.rightThumbstickButton, .rightThumbstickButton),
-                (gamepad.dpad.up, .dpadUp),
-                (gamepad.dpad.down, .dpadDown),
-                (gamepad.dpad.left, .dpadLeft),
-                (gamepad.dpad.right, .dpadRight)
-            ])
+        guard let gamepad = controller.extendedGamepad else {
+            return
+        }
 
-            if let playstationGamepad = controller.physicalInputProfile as? GCDualSenseGamepad {
-                buttons.append(
-                    contentsOf: [
-                        (playstationGamepad.touchpadButton, .touchpadButton),
-                        (playstationGamepad.touchpadPrimary.up, .touchpadPrimaryUp),
-                        (playstationGamepad.touchpadPrimary.right, .touchpadPrimaryRight),
-                        (playstationGamepad.touchpadPrimary.left, .touchpadPrimaryLeft),
-                        (playstationGamepad.touchpadPrimary.down, .touchpadPrimaryDown),
-                        (playstationGamepad.touchpadSecondary.up, .touchpadSecondaryUp),
-                        (playstationGamepad.touchpadSecondary.right, .touchpadSecondaryRight),
-                        (playstationGamepad.touchpadSecondary.down, .touchpadSecondaryDown),
-                        (playstationGamepad.touchpadSecondary.left, .touchpadSecondaryLeft)
-                    ]
-                )
-            }
+        buttons.append(contentsOf: standardButtons(for: gamepad))
+        buttons.append(contentsOf: specializedButtons(for: controller))
 
-            if let playstationGamepad = controller.physicalInputProfile as? GCDualShockGamepad {
-                buttons.append(
-                    contentsOf: [
-                        (playstationGamepad.touchpadButton, .touchpadButton),
-                        (playstationGamepad.touchpadPrimary.up, .touchpadPrimaryUp),
-                        (playstationGamepad.touchpadPrimary.right, .touchpadPrimaryRight),
-                        (playstationGamepad.touchpadPrimary.left, .touchpadPrimaryLeft),
-                        (playstationGamepad.touchpadPrimary.down, .touchpadPrimaryDown),
-                        (playstationGamepad.touchpadSecondary.up, .touchpadSecondaryUp),
-                        (playstationGamepad.touchpadSecondary.right, .touchpadSecondaryRight),
-                        (playstationGamepad.touchpadSecondary.down, .touchpadSecondaryDown),
-                        (playstationGamepad.touchpadSecondary.left, .touchpadSecondaryLeft)
-                    ]
-                )
-            }
-
-            if let xboxGamepad = controller.physicalInputProfile as? GCXboxGamepad {
-                buttons.append(
-                    contentsOf: [
-                        (xboxGamepad.buttonShare, .shareButton),
-                        (xboxGamepad.paddleButton1, .paddleButton1),
-                        (xboxGamepad.paddleButton2, .paddleButton2),
-                        (xboxGamepad.paddleButton3, .paddleButton3),
-                        (xboxGamepad.paddleButton4, .paddleButton4)
-                    ]
-                )
-            }
-
-            for (button, name) in buttons {
-                button?.valueChangedHandler = { [weak self] (_, _, pressed) in
-                    self?.lastAction = name
-                    self?.eventHandler?(name, pressed, controller)
+        for (button, action) in buttons {
+            button?.valueChangedHandler = { [weak self, weak controller] (_, _, pressed) in
+                guard let self, let controller else {
+                    return
                 }
-            }
 
-            gamepad.leftThumbstick.valueChangedHandler = { (_, xPos, yPos) in
-                let action: GCKAction = .leftThumbstick(x: xPos, y: yPos)
-                self.lastAction = action
-                self.leftThumbstick = action.position
-                self.eventHandler?(action, false, controller)
-            }
-
-            gamepad.rightThumbstick.valueChangedHandler = { (_, xPos, yPos) in
-                let action: GCKAction = .rightThumbstick(x: xPos, y: yPos)
-                self.lastAction = action
-                self.rightThumbstick = action.position
-                self.eventHandler?(action, false, controller)
+                self.updatePublishedInput(action: action, pressed: pressed)
+                self.emit(action: action, pressed: pressed, controller: controller)
             }
         }
+
+        gamepad.leftThumbstick.valueChangedHandler = { [weak self, weak controller] (_, xPosition, yPosition) in
+            self?.handleThumbstick(
+                action: .leftThumbstick(x: xPosition, y: yPosition),
+                controller: controller
+            )
+        }
+
+        gamepad.rightThumbstick.valueChangedHandler = { [weak self, weak controller] (_, xPosition, yPosition) in
+            self?.handleThumbstick(
+                action: .rightThumbstick(x: xPosition, y: yPosition),
+                controller: controller
+            )
+        }
+    }
+
+    private func standardButtons(for gamepad: GCExtendedGamepad) -> [(GCControllerButtonInput?, GCKAction)] {
+        [
+            (gamepad.buttonA, .buttonA),
+            (gamepad.buttonB, .buttonB),
+            (gamepad.buttonX, .buttonX),
+            (gamepad.buttonY, .buttonY),
+            (gamepad.leftShoulder, .leftShoulder),
+            (gamepad.rightShoulder, .rightShoulder),
+            (gamepad.leftTrigger, .leftTrigger),
+            (gamepad.rightTrigger, .rightTrigger),
+            (gamepad.buttonMenu, .buttonMenu),
+            (gamepad.buttonOptions, .buttonOptions),
+            (gamepad.buttonHome, .buttonHome),
+            (gamepad.leftThumbstickButton, .leftThumbstickButton),
+            (gamepad.rightThumbstickButton, .rightThumbstickButton),
+            (gamepad.dpad.up, .dpadUp),
+            (gamepad.dpad.down, .dpadDown),
+            (gamepad.dpad.left, .dpadLeft),
+            (gamepad.dpad.right, .dpadRight)
+        ]
+    }
+
+    private func specializedButtons(for controller: GCController) -> [(GCControllerButtonInput?, GCKAction)] {
+        if let gamepad = controller.physicalInputProfile as? GCDualSenseGamepad {
+            return touchpadButtons(for: gamepad)
+        }
+
+        if let gamepad = controller.physicalInputProfile as? GCDualShockGamepad {
+            return touchpadButtons(for: gamepad)
+        }
+
+        if let gamepad = controller.physicalInputProfile as? GCXboxGamepad {
+            return [
+                (gamepad.buttonShare, .shareButton),
+                (gamepad.paddleButton1, .paddleButton1),
+                (gamepad.paddleButton2, .paddleButton2),
+                (gamepad.paddleButton3, .paddleButton3),
+                (gamepad.paddleButton4, .paddleButton4)
+            ]
+        }
+
+        return []
+    }
+
+    private func touchpadButtons(for gamepad: GCDualSenseGamepad) -> [(GCControllerButtonInput?, GCKAction)] {
+        touchpadButtons(
+            button: gamepad.touchpadButton,
+            primary: gamepad.touchpadPrimary,
+            secondary: gamepad.touchpadSecondary
+        )
+    }
+
+    private func touchpadButtons(for gamepad: GCDualShockGamepad) -> [(GCControllerButtonInput?, GCKAction)] {
+        touchpadButtons(
+            button: gamepad.touchpadButton,
+            primary: gamepad.touchpadPrimary,
+            secondary: gamepad.touchpadSecondary
+        )
+    }
+
+    private func touchpadButtons(
+        button: GCControllerButtonInput,
+        primary: GCControllerDirectionPad,
+        secondary: GCControllerDirectionPad
+    ) -> [(GCControllerButtonInput?, GCKAction)] {
+        [
+            (button, .touchpadButton),
+            (primary.up, .touchpadPrimaryUp),
+            (primary.right, .touchpadPrimaryRight),
+            (primary.left, .touchpadPrimaryLeft),
+            (primary.down, .touchpadPrimaryDown),
+            (secondary.up, .touchpadSecondaryUp),
+            (secondary.right, .touchpadSecondaryRight),
+            (secondary.down, .touchpadSecondaryDown),
+            (secondary.left, .touchpadSecondaryLeft)
+        ]
+    }
+
+    private func handleThumbstick(action: GCKAction, controller: GCController?) {
+        let position = action.position
+
+        switch action {
+        case .leftThumbstick:
+            if leftThumbstick != position {
+                leftThumbstick = position
+                lastAction = action
+            }
+        case .rightThumbstick:
+            if rightThumbstick != position {
+                rightThumbstick = position
+                lastAction = action
+            }
+        default:
+            return
+        }
+
+        if let controller {
+            emit(action: action, pressed: false, controller: controller)
+        }
+    }
+
+    private func updatePublishedInput(action: GCKAction, pressed: Bool) {
+        switch action {
+        case .leftThumbstick, .rightThumbstick:
+            handleThumbstick(action: action, controller: nil)
+        default:
+            lastAction = pressed ? action : .none
+        }
+    }
+
+    private func resetInputState() {
+        leftThumbstick = .centered
+        rightThumbstick = .centered
+        lastAction = .none
+    }
+
+    func emit(action: GCKAction, pressed: Bool, controller: GCController) {
+        if let eventHandler {
+            eventHandler(action, pressed, controller)
+            return
+        }
+
+        let actionDescription = String(describing: action)
+        let stateDescription = pressed ? "pressed" : "released"
+        let playerIndex = controller.playerIndex.rawValue
+        logger.info("Controller #\(playerIndex), button \(actionDescription) is \(stateDescription).")
     }
 }
 
@@ -324,11 +414,18 @@ extension GCColor {
     /// Random color
     ///
     /// - Returns: A random color.
-    public static var GCKRandom: GCColor {
-        return GCColor(
+    public static var gckRandom: GCColor {
+        GCColor(
             red: .random(in: 0...1),
             green: .random(in: 0...1),
             blue: .random(in: 0...1)
         )
     }
+
+    /// Random color.
+    @available(*, deprecated, renamed: "gckRandom")
+    public static var GCKRandom: GCColor {
+        gckRandom
+    }
 }
+// swiftlint:disable:this file_length

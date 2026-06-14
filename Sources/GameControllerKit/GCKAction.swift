@@ -138,41 +138,16 @@ public enum GCKAction: Comparable {
 
     /// Get the position of the thumbstick.
     public var position: GCKMovePosition {
-        var position: GCKMovePosition = .unknown
-
         switch self {
         case .leftThumbstick(let xPos, let yPos), .rightThumbstick(let xPos, let yPos):
-            if yPos == 1.0 {
-                position = .up
-            } else if xPos > 0 && xPos < 1 && yPos > 0 && yPos < 1 {
-                position = .upRight
-            } else if xPos == 1.0 {
-                position = .right
-            } else if xPos > 0 && xPos < 1 && yPos < 0 && yPos > -1 {
-                position = .downRight
-            } else if yPos == -1.0 {
-                position = .down
-            } else if xPos < 0 && xPos > -1 && yPos < 0 && yPos > -1 {
-                position = .downLeft
-            } else if xPos == -1.0 {
-                position = .left
-            } else if xPos < 0 && xPos > -1 && yPos > 0 && yPos < 1 {
-                position = .upLeft
-            } else if xPos == 0 && yPos == 0 {
-                position = .centered
-            } else {
-                position = .unknown
-            }
-
+            GCKMovePosition(xPosition: xPos, yPosition: yPos)
         default:
-            position = GCKMovePosition.unknown
+            .unknown
         }
-
-        return position
     }
 
     /// Is the current action a thumbstick action
-    public var thumbStickAction: Bool {
+    public var thumbstickAction: Bool {
         return switch self {
         case
                 .leftThumbstick,
@@ -184,8 +159,14 @@ public enum GCKAction: Comparable {
         }
     }
 
+    /// Is the current action a thumbstick action.
+    @available(*, deprecated, renamed: "thumbstickAction")
+    public var thumbStickAction: Bool {
+        thumbstickAction
+    }
+
     /// Is the current action a touchpad action (Playstation Only)
-    public var touchPadAction: Bool {
+    public var touchpadAction: Bool {
         return switch self {
         case
                 .touchpadButton,
@@ -202,6 +183,12 @@ public enum GCKAction: Comparable {
         default:
             false
         }
+    }
+
+    /// Is the current action a touchpad action.
+    @available(*, deprecated, renamed: "touchpadAction")
+    public var touchPadAction: Bool {
+        touchpadAction
     }
 
     /// Is the current action a paddle action (Xbox Only)

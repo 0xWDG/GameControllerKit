@@ -58,8 +58,7 @@ struct ContentView: View {
                  "\((gameController.controllerType ?? .generic).description)")
             Text("Last action:\n\(String(describing: gameController.lastAction)).")
 
-            GCKControllerView()
-                .environmentObject(gameController)
+            GCKControllerView(gameController)
 
             List {
                 ForEach(log.reversed(), id: \.self) { text in
@@ -98,6 +97,28 @@ struct ContentView: View {
 }
 ```
 
+## Demo Application
+
+Run the included macOS SwiftUI demo from the repository:
+
+```shell
+swift run GameControllerKitDemo
+```
+
+The demo displays connected hardware and can mock controller types and input actions.
+
+## Mocking
+
+Mock state is useful for previews, UI development, and tests without controller hardware:
+
+```swift
+let gameController = GameControllerKit(observesControllers: false)
+gameController.mockController(type: .dualSense)
+gameController.sendMockAction(.buttonA)
+
+GCKControllerView(gameController)
+```
+
 ## Image of Usage Demo App
 
 ### iOS
@@ -119,4 +140,3 @@ struct ContentView: View {
 🤖 [Discord](https://discordapp.com/users/918438083861573692)
 
 Interested learning more about Swift? [Check out my blog](https://wesleydegroot.nl/blog/).
-
