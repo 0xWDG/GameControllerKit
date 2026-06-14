@@ -45,6 +45,43 @@ public enum GCKMovePosition: Comparable {
     /// if it keeps being unknown, check if the event you are sending is correct.
     case unknown
 
+    /// Creates a discrete direction from analog thumbstick coordinates.
+    ///
+    /// - Parameters:
+    ///   - xPosition: Horizontal axis in the range `-1...1`.
+    ///   - yPosition: Vertical axis in the range `-1...1`.
+    public init(xPosition: Float, yPosition: Float) {
+        let deadZone: Float = 0.2
+        guard hypotf(xPosition, yPosition) >= deadZone else {
+            self = .centered
+            return
+        }
+
+        let angle = atan2f(yPosition, xPosition)
+        let sector = Int(round(angle / (.pi / 4)))
+
+        self = switch sector {
+        case 0:
+            .right
+        case 1:
+            .upRight
+        case 2:
+            .up
+        case 3:
+            .upLeft
+        case 4, -4:
+            .left
+        case -3:
+            .downLeft
+        case -2:
+            .down
+        case -1:
+            .downRight
+        default:
+            .unknown
+        }
+    }
+
     public var arrowRepresentation: String {
         switch self {
         case .up:
